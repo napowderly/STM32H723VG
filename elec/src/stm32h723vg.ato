@@ -1,0 +1,2 @@
+module Stm32h723vg:
+    signal gnd
