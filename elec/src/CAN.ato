@@ -1,0 +1,127 @@
+from "generics/interfaces.ato" import Power, CAN, CAN_TTL, Pair
+from "generics/capacitors.ato" import Capacitor
+from "generics/resistors.ato" import Resistor
+
+module CANInterface:
+    """
+    Transceiver for CAN bus + connector and protection
+    """
+    ############## External Interfaces ###############
+    can_ttl = new CAN_TTL
+    power3v3 = new Power
+    power5v = new Power
+
+    # JSTGH4Pin for external CAN and 5V power (optional)
+    connector = new JSTGH4Pin
+    power5v ~ connector.power
+
+
+    ################ CAN Transceiver #################
+    transceiver = new TJA1051T
+    power5v ~ transceiver.power5v
+    power3v3 ~ transceiver.power3v3
+    transceiver.can ~ connector.can
+    can_ttl ~ transceiver.can_ttl
+
+    # bypass caps
+    tx_bypass_cap3v3 = new Capacitor
+    tx_bypass_cap3v3.footprint = "C0402"
+    tx_bypass_cap3v3.value = 100nF +/- 20%
+    power3v3 ~ tx_bypass_cap3v3.power
+
+    tx_bypass_cap5v = new Capacitor
+    tx_bypass_cap5v.footprint = "C0402"
+    tx_bypass_cap5v.value = 100nF +/- 20%
+    power5v ~ tx_bypass_cap5v.power
+
+
+    # ESD protection
+    esd_diode = new PESD1CAN
+    transceiver.can ~ esd_diode.can
+    power5v ~ esd_diode.power
+
+    # configure for normal mode
+    silent_resistor = new Resistor
+    silent_resistor.value = 10kohm +/- 20%
+    silent_resistor.footprint = "R0402"
+    transceiver.silent.io ~ silent_resistor.1
+    power5v.gnd ~ silent_resistor.2
+
+    # CAN bus termination
+    r_term = new Resistor
+    r_term.value = 120ohm +/- 5%
+    r_term.footprint = "R0402"
+    transceiver.can.CANL ~ r_term.1
+    transceiver.can.CANH ~ r_term.2
+    # r_term.mpn = "DNP" # populate by default
+
+    # Filter caps
+    c_canl = new Capacitor
+    c_canl.footprint = "C0402"
+    c_canl.value = 47nF +/- 20%
+    transceiver.can.CANL ~ c_canl.1
+    power5v.gnd ~ c_canl.2
+
+    c_canh = new Capacitor
+    c_canh.footprint = "C0402"
+    c_canh.value = 47nF +/- 20%
+    transceiver.can.CANH ~ c_canh.1
+    power5v.gnd ~ c_canh.2
+
+component TJA1051T:
+    """
+    CAN tranciever 5Mbps
+    """
+    footprint = "SOIC-8_L4.9-W3.9-P1.27-LS6.0-BL"
+    lcsc_id = "C38695"
+    mpn = "C38695"
+
+    power5v = new Power
+    power5v.vcc ~ pin 3
+    power5v.gnd ~ pin 2
+
+    power3v3 = new Power
+    power3v3.vcc ~ pin 5
+    power3v3.gnd ~ power5v.gnd
+
+    can = new CAN
+    can.CANL ~ pin 6
+    can.CANH ~ pin 7
+
+    can_ttl = new CAN_TTL
+    can_ttl.tx ~ pin 1
+    can_ttl.rx ~ pin 4
+
+    silent = new Pair
+    silent.io ~ pin 8
+    silent.gnd ~ power5v.gnd
+
+
+component PESD1CAN:
+    """
+    200W ESD protection for CAN bus
+    """
+    footprint = "SOT-23_L2.9-W1.3-P1.90-LS2.4-BR"
+    lcsc_id = "C15771"
+    mpn = "C15771"
+    # pins
+    power = new Power
+    power.gnd ~ pin 3
+
+    can = new CAN
+    can.CANL ~ pin 1
+    can.CANH ~ pin 2
+
+component JSTGH4Pin:
+    power = new Power
+    can = new CAN
+
+    power.vcc ~ pin 1
+    can.CANH ~ pin 2
+    can.CANL ~ pin 3
+    power.gnd ~ pin 4
+
+    footprint = "CONN-SMD_4P-P1.25_SM04B-GHS-TB-LF-SN"
+    lcsc_id = "C189895"
+    mpn = "C189895"
+    designator_prefix = "J"

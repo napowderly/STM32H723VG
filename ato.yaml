@@ -1,6 +1,35 @@
 ato-version: ^0.2.0
 builds:
   default:
-    entry: elec/src/stm32h723vg.ato:Stm32h723vg
+    entry: elec/src/STM32H723VGH6.ato:STM32H723VGH6
+  devboard:
+    entry: elec/src/STM32H723VGH6.ato:DEVBOARD
+  phy:
+    entry: elec/src/EthernetPHY.ato:EthernetPHY
+  can:
+    entry: elec/src/CAN.ato:CANInterface
 dependencies:
-- generics
+- name: generics
+  version_spec: '@09ad6baeaab93d53b9b6c90069ac750f4161d76f'
+  link_broken: true
+  path: elec/src/generics
+- name: programming-headers
+  version_spec: '@e3a6ca6b5b93e3c2db899aa7cc5a8fde17920abc'
+  link_broken: true
+  path: elec/src/programming-headers
+- name: usb-connectors
+  version_spec: '@53496dede5b600bd799a0afe199eaa514ebdc5f6'
+  link_broken: true
+  path: elec/src/usb-connectors
+- name: ldk220m-r
+  version_spec: '@1c2a973953da33a23d7afdce0fa1f7fdf68dc68e'
+  link_broken: true
+  path: elec/src/ldk220m-r
+- name: https://github.com/napowderly/mcp2515
+  version_spec:
+  link_broken: true
+  path: elec/src/https:/github.com/napowderly/mcp2515
+- name: saleae-header
+  version_spec: '@c2893ddaad84cd03553cd29747d3bb9e0655ef20'
+  link_broken: true
+  path: elec/src/saleae-header

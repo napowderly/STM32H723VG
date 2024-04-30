@@ -1,0 +1,214 @@
+from "generics/interfaces.ato" import RMII, MDI, Power, Pair
+from "generics/resistors.ato" import Resistor
+from "generics/capacitors.ato" import Capacitor
+from "generics/oscillators.ato" import Crystal, Oscillator
+
+
+module EthernetPHY:
+    power = new Power
+    rmii = new RMII
+
+    ic = new _DP83822IRHBR
+    power ~ ic.power_vddio
+    power ~ ic.power_avdd
+    rmii ~ ic.rmii
+
+    vddio_cap_1 = new Capacitor
+    vddio_cap_1.value = 10uF +/- 20%
+    vddio_cap_1.package = "0603"
+    ic.power_vddio ~ vddio_cap_1.power
+    vddio_cap_2 = new Capacitor
+    vddio_cap_2.value = 1uF +/- 20%
+    vddio_cap_2.package = "0402"
+    ic.power_vddio ~ vddio_cap_2.power
+    vddio_cap_3 = new Capacitor
+    vddio_cap_3.value = 100nF +/- 20%
+    vddio_cap_3.package = "0402"
+    ic.power_vddio ~ vddio_cap_3.power
+    vddio_cap_4 = new Capacitor
+    vddio_cap_4.value = 10nF +/- 20%
+    vddio_cap_4.package = "0402"
+    ic.power_vddio ~ vddio_cap_4.power
+
+    avdd_cap_1 = new Capacitor
+    avdd_cap_1.value = 10uF +/- 20%
+    avdd_cap_1.package = "0603"
+    ic.power_avdd ~ avdd_cap_1.power
+    avdd_cap_2 = new Capacitor
+    avdd_cap_2.value = 1uF +/- 20%
+    avdd_cap_2.package = "0402"
+    ic.power_avdd ~ avdd_cap_2.power
+    avdd_cap_3 = new Capacitor
+    avdd_cap_3.value = 100nF +/- 20%
+    avdd_cap_3.package = "0402"
+    ic.power_avdd ~ avdd_cap_3.power
+    avdd_cap_4 = new Capacitor
+    avdd_cap_4.value = 10nF +/- 20%
+    avdd_cap_4.package = "0402"
+    ic.power_avdd ~ avdd_cap_4.power
+
+    # RJ45 + transformer
+    rj45 = new HR913550A
+    rj45.mdi ~ ic.mdi
+    power ~ rj45.power_vref
+
+    # link lights
+    link_resistor = new Resistor
+    ic.link_led ~ link_resistor.1
+    link_resistor.2 ~ rj45.green_led_anode
+    rj45.green_led_cathode ~ power.gnd
+    link_resistor.value = 1kohm +/- 5% #TODO: check value
+    link_resistor.package = "0402"
+
+    speed_resistor = new Resistor
+    ic.speed_led ~ speed_resistor.1
+    speed_resistor.2 ~ rj45.yellow_led_anode
+    rj45.yellow_led_cathode ~ power.gnd
+    speed_resistor.value = 1kohm +/- 5% #TODO: check value
+    speed_resistor.package = "0402"
+
+    # crystal
+    oscillator = new Oscillator
+    oscillator.xin ~ ic.xin
+    oscillator.xout ~ ic.xout
+    oscillator.gnd ~ power.gnd
+
+    oscillator.load_cap_1.value = 12pF +/- 10%
+    oscillator.load_cap_1.package = "0402"
+    oscillator.load_cap_2.value = 12pF +/- 10%
+    oscillator.load_cap_2.package = "0402"
+
+    oscillator.crystal -> X322525MOB4SI
+
+component X322525MOB4SI from Crystal:
+    # component X322525MOB4SI
+    footprint = "OSC-SMD_4P-L3.2-W2.5-BL"
+    lcsc_id = "C9006"
+    mpn = "C9006"
+    # pins
+    xin ~ pin 1
+    xout ~ pin 3
+    gnd ~ pin 2
+    gnd ~ pin 4
+
+
+component _DP83822IRHBR:
+    # component DP83822IRHBR
+    footprint = "VQFN-32_L5.0-W5.0-P0.50-TL-EP2.9"
+    lcsc_id = "C601649"
+    mpn = "C601649"
+    # pins
+    power_vddio = new Power
+    power_vddio.vcc ~ pin 21
+    power_vddio.gnd ~ pin 33
+
+    power_avdd = new Power
+    power_avdd.vcc ~ pin 14
+    power_avdd.gnd ~ power_vddio.gnd
+
+    rmii = new RMII
+    rmii.txen ~ pin 3
+    rmii.txd0 ~ pin 4
+    rmii.txd1 ~ pin 5
+    rmii.crs_dv ~ pin 27
+    rmii.rx_er ~ pin 28
+    rmii.rxd0 ~ pin 30
+    rmii.rxd1 ~ pin 31
+    rmii.ref_clk ~ pin 25
+    rmii.mdio ~ pin 19
+    rmii.mdc ~ pin 20
+    rmii.gnd ~ power_vddio.gnd
+
+    mdi = new MDI
+    mdi.tdm ~ pin 11
+    mdi.tdp ~ pin 12
+    mdi.rdm ~ pin 9
+    mdi.rdp ~ pin 10
+
+    signal link_led ~ pin 17
+    signal speed_led ~ pin 24
+    signal RESET_N ~ pin 18
+
+    xin = new Pair
+    xin.io ~ pin 23
+    xin.gnd ~ power_vddio.gnd
+
+    xout = new Pair
+    xout.io ~ pin 22
+    xout.gnd ~ power_vddio.gnd
+
+
+module MDITerminator:
+    mdi = new MDI
+
+    recieve_termination = new Termination
+    recieve_termination.dp ~ mdi.rdp
+    recieve_termination.dm ~ mdi.rdm
+
+    transmit_termination = new Termination
+    transmit_termination.dp ~ mdi.tdp
+    transmit_termination.dm ~ mdi.tdm
+
+
+module Termination:
+    signal dm
+    signal dp
+
+    r_top = new Resistor
+    r_bottom = new Resistor
+    c1 = new Capacitor
+    c2 = new Capacitor
+
+    # connections
+    dp ~ r_top.1
+    r_top.2 ~ r_bottom.1
+    r_bottom.2 ~ dm
+
+    r_top.2 ~ c1.1
+    r_top.2 ~ c2.1
+    c1.2 ~ dm
+    c2.2 ~ dm
+
+    # values
+    r_top.value = 49.9ohm
+    r_bottom.value = 49.9ohm
+    c1.value = 1uF
+    c2.value = 0.1uF
+
+
+# module RJ45:
+#     connector = new _HR913550A
+#     expose connector.mdi as mdi
+#     expose connector.power_vref as power
+
+#     link_led = new IndicatorLED
+#     status_led = new IndicatorLED
+
+#     green_led.led -> connector.green_led
+#     yellow_led.led -> connector.yellow_led
+
+
+component HR913550A:
+    # component HR913550A
+    footprint = "RJ45-TH_HR913550A"
+    lcsc_id = "C163507"
+    mpn = "C163507"
+
+    mdi = new MDI
+    mdi.tdm ~ pin 2
+    mdi.tdp ~ pin 1
+    mdi.rdm ~ pin 6
+    mdi.rdp ~ pin 3
+
+    power_vref = new Power
+    power_vref.vcc ~ pin 5
+    power_vref.vcc ~ pin 4
+    power_vref.gnd ~ pin 8
+
+    # green_led = new LED
+    signal green_led_anode ~ pin 9
+    signal green_led_cathode ~ pin 10
+
+    # yellow_led = new LED
+    signal yellow_led_anode ~ pin 12
+    signal yellow_led_cathode ~ pin 11

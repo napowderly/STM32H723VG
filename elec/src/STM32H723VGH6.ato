@@ -1,0 +1,379 @@
+from "programming-headers/elec/src/programming-headers.ato" import JTAG_10PIN
+from "usb-connectors/usb-connectors.ato" import USBCConn
+from "generics/interfaces.ato" import Power, Pair, JTAG, SPI, I2C, UART, USB2, RMII, CAN_TTL
+from "EthernetPHY.ato" import EthernetPHY
+from "ldk220m-r/elec/src/ldk220m-r.ato" import LDK220M_R
+from "generics/buttons.ato" import ButtonPullup, ButtonSKRPACE010
+from "generics/capacitors.ato" import Capacitor
+from "CAN.ato" import CANInterface
+from "saleae-header/saleae-header.ato" import SaleaeHeader
+from "generics/leds.ato" import LEDIndicatorGreen, LEDIndicatorRed
+
+module DEVBOARD:
+    micro = new STM32H723VGH6
+    usbc = new USBCConn
+    jtag = new JTAG_10PIN
+    phy = new EthernetPHY
+    ldo = new LDK220M_R
+    can_interface = new CANInterface
+
+    power5v_led = new LEDIndicatorGreen
+    usbc.power ~ power5v_led.power
+    power5v_led.v_in = 5V
+
+    power3v3_led = new LEDIndicatorGreen
+    ldo.power_out ~ power3v3_led.power
+    power3v3_led.v_in = 3.3V
+
+    blinky = new LEDIndicatorRed
+    micro.ic.PA0 ~ blinky.input
+    blinky.gnd ~ ldo.power_out.gnd
+    blinky.v_in = 3.3V
+
+    can_saleae = new SaleaeHeader
+    can_saleae.ch0.io ~ can_interface.can_ttl.tx
+    can_saleae.ch1.io ~ can_interface.can_ttl.rx
+    can_saleae.ch2.io ~ ldo.power_out.vcc
+    can_saleae.ch3.io ~ micro.rmii.mdc
+    can_saleae.gnd ~ ldo.power_out.gnd
+
+    rmii_saleae_1 = new SaleaeHeader
+    rmii_saleae_1.ch0.io ~ micro.rmii.txen
+    rmii_saleae_1.ch1.io ~ micro.rmii.txd0
+    rmii_saleae_1.ch2.io ~ micro.rmii.txd1
+    rmii_saleae_1.ch3.io ~ micro.rmii.crs_dv
+    rmii_saleae_1.gnd ~ micro.rmii.gnd
+
+    rmii_saleae_2 = new SaleaeHeader
+    rmii_saleae_2.ch0.io ~ micro.rmii.rxd0
+    rmii_saleae_2.ch1.io ~ micro.rmii.rxd1
+    rmii_saleae_2.ch2.io ~ micro.rmii.ref_clk
+    rmii_saleae_2.ch3.io ~ micro.rmii.mdio
+    rmii_saleae_2.gnd ~ micro.rmii.gnd
+
+    usbc.usb2 ~ micro.usb2
+    usbc.power ~ ldo.power_in
+    ldo.power_out ~ micro.power
+    ldo.power_out ~ phy.power
+    jtag.jtag ~ micro.jtag
+    phy.rmii ~ micro.rmii
+    micro.can_ttl ~ can_interface.can_ttl
+    usbc.power ~ can_interface.power5v
+    ldo.power_out ~ can_interface.power3v3
+
+module STM32H723VGH6:
+    ic = new _STM32H723VGH6
+
+    ################ Interfaces #################
+    power = new Power
+
+    spi1 = new SPI
+    spi1.cs ~ ic.PA4
+    spi1.sck ~ ic.PA5
+    spi1.miso ~ ic.PA6
+    spi1.mosi ~ ic.PA7
+
+    i2c1 = new I2C
+    i2c1.sda ~ ic.PB7
+    i2c1.scl ~ ic.PB8
+
+    usb2 = new USB2
+    usb2.dp ~ ic.PA12
+    usb2.dm ~ ic.PA11
+
+    can_ttl = new CAN_TTL
+    can_ttl.tx ~ ic.PD1
+    can_ttl.rx ~ ic.PD0
+
+    rmii = new RMII
+    rmii.txen ~ ic.PB11
+    rmii.txd0 ~ ic.PB12
+    rmii.txd1 ~ ic.PB13
+    rmii.crs_dv ~ ic.PA7
+    rmii.rxd0 ~ ic.PC4
+    rmii.rxd1 ~ ic.PC5
+    rmii.ref_clk ~ ic.PA1
+    rmii.mdio ~ ic.PA10
+    rmii.mdc ~ ic.PA6
+    rmii.gnd ~ power.gnd
+
+    jtag = new JTAG
+    jtag.tms ~ ic.PA13
+    jtag.tck ~ ic.PA14
+    jtag.tdi ~ ic.PA15
+    jtag.tdo ~ ic.PB3
+    jtag.reset ~ ic.PB4
+    jtag.gnd ~ power.gnd
+    jtag.vcc ~ power.vcc
+
+
+    ################ Power Supplies ################
+    power ~ ic.power_vdd
+    power ~ ic.power_vddldo
+    power ~ ic.power_vdda
+    power ~ ic.power_vdd33usb
+    power ~ ic.power_vbat
+
+    power.voltage = 3.3V
+
+    v_cap1 = new Capacitor
+    v_cap1.value = 2.2uF +/- 20%
+    v_cap1.package = "0402"
+    ic.power_vcap ~ v_cap1.power
+
+    v_cap2 = new Capacitor
+    v_cap2.value = 2.2uF +/- 20%
+    v_cap2.package = "0402"
+    ic.power_vcap ~ v_cap2.power
+    v_cap2.voltage = power.voltage
+
+    vdd_cap_1 = new Capacitor
+    vdd_cap_1.value = 4.7uF +/- 20%
+    vdd_cap_1.package = "0402"
+    ic.power_vdd ~ vdd_cap_1.power
+    vdd_cap_1.voltage = power.voltage
+
+    vdd_cap_2 = new Capacitor
+    vdd_cap_2.value = 100nF +/- 20%
+    vdd_cap_2.package = "0402"
+    ic.power_vdd ~ vdd_cap_2.power
+    vdd_cap_2.voltage = power.voltage
+
+    vdd_cap_3 = new Capacitor
+    vdd_cap_3.value = 100nF +/- 20%
+    vdd_cap_3.package = "0402"
+    ic.power_vdd ~ vdd_cap_3.power
+    vdd_cap_3.voltage = power.voltage
+
+    vdd_cap_4 = new Capacitor
+    vdd_cap_4.value = 100nF +/- 20%
+    vdd_cap_4.package = "0402"
+    ic.power_vdd ~ vdd_cap_4.power
+    vdd_cap_4.voltage = power.voltage
+
+    vdd_cap_5 = new Capacitor
+    vdd_cap_5.value = 100nF +/- 20%
+    vdd_cap_5.package = "0402"
+    ic.power_vdd ~ vdd_cap_5.power
+    vdd_cap_5.voltage = power.voltage
+
+    vdd_cap_6 = new Capacitor
+    vdd_cap_6.value = 100nF +/- 20%
+    vdd_cap_6.package = "0402"
+    ic.power_vdd ~ vdd_cap_6.power
+    vdd_cap_6.voltage = power.voltage
+
+    vdd_cap_7 = new Capacitor
+    vdd_cap_7.value = 100nF +/- 20%
+    vdd_cap_7.package = "0402"
+    ic.power_vdd ~ vdd_cap_7.power
+    vdd_cap_7.voltage = power.voltage
+
+    vdd_cap_8 = new Capacitor
+    vdd_cap_8.value = 100nF +/- 20%
+    vdd_cap_8.package = "0402"
+    ic.power_vdd ~ vdd_cap_8.power
+    vdd_cap_8.voltage = power.voltage
+
+    vdd_cap_9 = new Capacitor
+    vdd_cap_9.value = 100nF +/- 20%
+    vdd_cap_9.package = "0402"
+    ic.power_vdd ~ vdd_cap_9.power
+    vdd_cap_9.voltage = power.voltage
+
+    vdd_cap_10 = new Capacitor
+    vdd_cap_10.value = 100nF +/- 20%
+    vdd_cap_10.package = "0402"
+    ic.power_vdd ~ vdd_cap_10.power
+    vdd_cap_10.voltage = power.voltage
+
+    vbat_cap = new Capacitor
+    vbat_cap.value = 1uF +/- 20%
+    vbat_cap.package = "0402"
+    ic.power_vbat ~ vbat_cap.power
+    vbat_cap.voltage = power.voltage
+
+    vdda_cap_1 = new Capacitor
+    vdda_cap_1.value = 100nF +/- 20%
+    vdda_cap_1.package = "0402"
+    ic.power_vdda ~ vdda_cap_1.power
+    vdda_cap_1.voltage = power.voltage
+
+    vdda_cap_2 = new Capacitor
+    vdda_cap_2.value = 1uF +/- 20%
+    vdda_cap_2.package = "0402"
+    ic.power_vdda ~ vdda_cap_2.power
+    vdda_cap_2.voltage = power.voltage
+
+    vrefp_cap = new Capacitor
+    vrefp_cap.value = 100nF +/- 20%
+    vrefp_cap.package = "0402"
+    ic.power_vrefp ~ vrefp_cap.power
+    vrefp_cap.voltage = power.voltage
+
+
+
+    # should be handled by connections
+    ic.power_vdd.voltage = power.voltage
+    ic.power_vddldo.voltage = power.voltage
+    ic.power_vdda.voltage = power.voltage
+    ic.power_vdd33usb.voltage = power.voltage
+    ic.power_vcap.voltage = power.voltage
+
+    ################ Reset/boot ##############
+    boot_button = new ButtonPullup
+    boot_button.btn -> ButtonSKRPACE010
+    boot_button.output.io ~ ic.BOOT0
+    power ~ boot_button.power
+
+
+component _STM32H723VGH6:
+    # component STM32H723VGH6
+    footprint = "TFBGA-100_L8.0-W8.0-R10-C10-P0.80-BL"
+
+    lcsc_id = "C2848033"
+    mpn = "C2848033"
+    ################ Power Interfaces ################
+    # Ground pins
+    signal gnd ~ pin C2
+    gnd ~ pin E4
+    gnd ~ pin E5
+    gnd ~ pin E6
+    gnd ~ pin J1
+
+    # External IO power
+    power_vdd = new Power
+    power_vdd.vcc ~ pin D2 # VDD
+    power_vdd.vcc ~ pin F4 # VDD
+    power_vdd.vcc ~ pin F5 # VDD
+    power_vdd.vcc ~ pin K1 # VDD
+    power_vdd.gnd ~ gnd # VSS
+    assert power_vdd.voltage within 1.62V to 3.6V
+
+    # Supply for internal reg supplying VCore
+    power_vddldo = new Power
+    assert power_vddldo.voltage within 1.62V to 3.6V
+
+    # External cap for internal LDO
+    power_vcap = new Power
+    power_vcap.voltage = 1V to 1.35V
+    power_vcap.vcc ~ pin E7
+    power_vcap.vcc ~ pin F8
+    power_vcap.gnd ~ gnd
+
+    # Supply for ADC, DAC, COMP and OPAMP
+    power_vdda = new Power
+    power_vdda.vcc ~ pin H1 # VDDA
+    power_vdda.gnd ~ pin G1 # VSSA
+    assert power_vdda.voltage within 1.62V to 3.6V
+
+    # Supply for USB PHY
+    power_vdd33usb = new Power
+    power_vdd33usb.vcc ~ pin F6
+    power_vdd33usb.gnd ~ gnd
+    assert power_vdd33usb.voltage within 3.14V to 3.46V
+
+    # Battery input
+    power_vbat = new Power
+    power_vbat.vcc ~ pin B2
+    power_vbat.gnd ~ gnd
+    power_vbat.voltage = 3.3V
+    assert power_vbat.voltage within 1.2V to 3.6V
+
+    # Vrefp
+    power_vrefp = new Power
+    power_vrefp.vcc ~ pin L1
+    power_vrefp.gnd ~ pin K1
+
+
+    ################ Reset/boot ##############
+    signal PDR_ON ~ pin F7 # power down reset on
+    signal BOOT0 ~ pin D5
+    signal NRST ~ pin E1
+
+
+    ################ Clocks #################
+    signal PC14_minus_OSC32_IN ~ pin A1
+    signal PC15_minus_OSC32_OUT ~ pin B1
+    signal PH0_minus_OSC_IN ~ pin C1
+    signal PH1_minus_OSC_OUT ~ pin D1
+
+    ################ Signals #################
+    signal PC13 ~ pin A2
+    signal PE2 ~ pin A3
+    signal PB9 ~ pin A4
+    signal PB7 ~ pin A5
+    signal PB4 ~ pin A6
+    signal PB3 ~ pin A7
+    signal PA15 ~ pin A8
+    signal PA14 ~ pin A9
+    signal PA13 ~ pin A10
+    signal PE3 ~ pin B3
+    signal PB8 ~ pin B4
+    signal PB6 ~ pin B5
+    signal PD5 ~ pin B6
+    signal PD2 ~ pin B7
+    signal PC11 ~ pin B8
+    signal PC10 ~ pin B9
+    signal PA12 ~ pin B10
+    signal PE4 ~ pin C3
+    signal PE1 ~ pin C4
+    signal PB5 ~ pin C5
+    signal PD6 ~ pin C6
+    signal PD3 ~ pin C7
+    signal PC12 ~ pin C8
+    signal PA9 ~ pin C9
+    signal PA11 ~ pin C10
+    signal PE5 ~ pin D3
+    signal PE0 ~ pin D4
+    signal PD7 ~ pin D6
+    signal PD4 ~ pin D7
+    signal PD0 ~ pin D8
+    signal PA8 ~ pin D9
+    signal PA10 ~ pin D10
+    signal PC2_C ~ pin E2
+    signal PE6 ~ pin E3
+    signal PD1 ~ pin E8
+    signal PC9 ~ pin E9
+    signal PC7 ~ pin E10
+    signal PC0 ~ pin F1
+    signal PC1 ~ pin F2
+    signal PC3_C ~ pin F3
+    signal PC8 ~ pin F9
+    signal PC6 ~ pin F10
+    signal PA0 ~ pin G2
+    signal PA4 ~ pin G3
+    signal PC4 ~ pin G4
+    signal PB2 ~ pin G5
+    signal PE10 ~ pin G6
+    signal PE14 ~ pin G7
+    signal PD15 ~ pin G8
+    signal PD11 ~ pin G9
+    signal PB15 ~ pin G10
+    signal PA1 ~ pin H2
+    signal PA5 ~ pin H3
+    signal PC5 ~ pin H4
+    signal PE7 ~ pin H5
+    signal PE11 ~ pin H6
+    signal PE15 ~ pin H7
+    signal PD14 ~ pin H8
+    signal PD10 ~ pin H9
+    signal PB14 ~ pin H10
+    signal PA2 ~ pin J2
+    signal PA6 ~ pin J3
+    signal PB0 ~ pin J4
+    signal PE8 ~ pin J5
+    signal PE12 ~ pin J6
+    signal PB10 ~ pin J7
+    signal PB13 ~ pin J8
+    signal PD9 ~ pin J9
+    signal PD13 ~ pin J10
+    signal PA3 ~ pin K2
+    signal PA7 ~ pin K3
+    signal PB1 ~ pin K4
+    signal PE9 ~ pin K5
+    signal PE13 ~ pin K6
+    signal PB11 ~ pin K7
+    signal PB12 ~ pin K8
+    signal PD8 ~ pin K9
+    signal PD12 ~ pin K10
